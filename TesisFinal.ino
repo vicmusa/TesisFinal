@@ -1,5 +1,6 @@
 /******* LIBRERIAS *******/
 #include "secrets.h"
+#include "images.h"
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include "WiFi.h"
@@ -17,18 +18,20 @@ MAX30105 particleSensor;
 #define BUFFER_LEN  256
 #define BAND    915E6 //Banda del LoRa
 #define MAX_BRIGHTNESS 255
-#define DELAY_BTN 500
+#define DELAY_BTN 750
+#define ESTABLE 7000
 
 /******* VARIABLES ******/
 float promtemp,tempC,spo2,hr;
 int modo=0;
-long lastTime=0;
+long lastTime=0, tiempo=0;
 char msg[BUFFER_LEN];
 String ID;
 WiFiManager wifiManager;
 WiFiClientSecure net = WiFiClientSecure();
 PubSubClient client(net);
-
+TaskHandle_t Task1;
+int estado; // 0 = sin dedo en el sensor 1 = Estabilizando datos  2= Datos estables
 /*********** VARIABLES MAX30102 *******/
 
 double avered = 0; double aveir = 0;
@@ -52,11 +55,37 @@ byte rateSpot = 0;
 long lastBeat = 0; //Time at which the last beat occurred
 float beatsPerMinute;
 int beatAvg;
+uint32_t ledIR;
 #define USEFIFO
 /******* METODOS *******/
 
 /*RECIBIR MENSAJE AWS */
+void pantalla()
+{
 
+  // Metodo para imprimir en la pantalla LCD
+
+Heltec.display->clear();
+while(estado==1)
+{
+  Heltec.display -> drawString(6,40,"CALCULANDO...");
+}
+// AQUI VA LO DE LA PANTALLA + CORAZON
+Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));
+Heltec.display -> drawString(3,10,"ID:"+ ID);
+Heltec.display -> drawString(3,30,"TEMP: "+String(promtemp));
+Heltec.display -> drawString(3,40,"SPO2: "+String(ESpO2));
+if(modo==0)
+{
+  // LORA 
+}
+if(modo==1)
+{
+ // WIFI 
+}
+Heltec.display ->display();
+  
+}
 void messageHandler(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -115,8 +144,12 @@ void publishMessage()
 }
 
 /* ENVIAR DATOS */
-void sendData()
+void sendData(void *parameter)
 {
+  while(1)
+  {
+  if(estado==2)
+  {
   if(modo==0)
   {
     if(WiFi.status()== WL_CONNECTED)
@@ -124,17 +157,17 @@ void sendData()
       WiFi.disconnect(true);
     }
   Serial.println("ENVIANDO POR LORA");
-/*LoRa.beginPacket();
+  LoRa.beginPacket();
   LoRa.setTxPower(14,RF_PACONFIG_PASELECT_PABOOST);
   LoRa.print(promtemp);
   LoRa.print("#");
-  LoRa.print(hr);
+  LoRa.print(beatAvg);
   LoRa.print("$");
-  LoRa.print(spo2);
+  LoRa.print(ESpO2);
   LoRa.print("/");
   LoRa.print(ID);
   LoRa.endPacket();
-  */
+  
   }
   if(modo==1)
   {
@@ -146,7 +179,10 @@ void sendData()
    }
    publishMessage();
   }
- // delay(6000);
+  delay(6000);
+  vTaskDelay(10);
+  }
+  }
 }
 
 
@@ -322,6 +358,14 @@ void setup() {
   setupADC();
   setupMAX30102();
   setupISR();
+  xTaskCreatePinnedToCore(
+      sendData, /* Function to implement the task */
+      "Task1", /* Name of the task */
+      100000,  /* Stack size in words */
+      NULL,  /* Task input parameter */
+      0,  /* Priority of the task */
+      &Task1,  /* Task handle. */
+      0); /* Core where the task should run */
   String subID1= WiFi.macAddress().substring(9,11);
   String subID2= WiFi.macAddress().substring(12,14);
   String subID3= WiFi.macAddress().substring(15,WiFi.macAddress().length());
@@ -336,9 +380,29 @@ void setup() {
 
 void loop() {
 
- hr=random(80,100);
- spo2=random(95,100);
- promtemp=random(35,38);
+ while(ledIR = particleSensor.getFIFOIR() < FINGER_ON)
+ {
+   
+  Heltec.display->clear();
+  Heltec.display -> drawString(6,40,"COLOCE EL DEDO EN EL SENSOR");
+  Heltec.display ->display();
+  estado=0;
+   
+ }
+ if(estado==0)
+ {
+  estado=1;
+  tiempo=millis();
+ }
+ if(estado==1 && millis()-tiempo>= ESTABLE)
+ {
+  estado==2;
+ }
  leerMax30102();
- sendData();
-}
+ leerADC();
+ pantalla();
+ if(estado==2)
+ {
+  delay(2000);
+ }
+ }
