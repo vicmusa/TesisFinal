@@ -137,7 +137,7 @@ void publishMessage()
   String strTemp=String(promtemp);
   String strSpo2=String(spo2);
   String strHR=String(hr);  
-  snprintf (msg, BUFFER_LEN,"{ \"ID\": \"%s\" , \"Temprature\" : %s , \"Pulsaciones\": %s , \"Oxigenación\": %s }",ID.c_str(),strTemp.c_str(),strHR.c_str(),strSpo2.c_str());
+  snprintf (msg, BUFFER_LEN,"{ \"ID\": \"%s\" , \"Tempratura\" : \"%s\" , \"Pulsaciones\": \"%s\" , \"Oxigen": \"%s\" }",ID.c_str(),strTemp.c_str(),strHR.c_str(),strSpo2.c_str());
   Serial.println(msg);
   client.publish(AWS_IOT_PUBLISH_TOPIC,msg);
   Serial.print("Mensaje enviado");
