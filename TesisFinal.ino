@@ -1,4 +1,4 @@
-/******* LIBRERIAS *******/
+/******LIBRERIAS******/
 #include "secrets.h"
 #include "images.h"
 #include <WiFiManager.h> 
@@ -13,18 +13,18 @@
 
 MAX30105 particleSensor;
 
-//Provide the token generation process info.
+//Proporciona la información del proceso de generación de tokens.
 #include "addons/TokenHelper.h"
-//Provide the RTDB payload printing info and other helper functions.
+
+//Proporciona la información de impresión de la carga útil de la base de datos en tiempo real y otras funciones auxiliares.
 #include "addons/RTDBHelper.h"
 
-
-/***** Definiciones *******/
-#define btn 12
-#define BAND    915E6 //Banda del LoRa
-#define MAX_BRIGHTNESS 255
-#define DELAY_BTN 750
-#define ESTABLE 7000
+/******Definiciones******/
+#define btn 12               //
+#define BAND 915E6           //Banda del LoRa
+#define MAX_BRIGHTNESS 255   //
+#define DELAY_BTN 750        //
+#define ESTABLE 7000         //
 
 
 /******* VARIABLES ******/
@@ -33,7 +33,7 @@ int modo=0;
 long lastTime=0, tiempo=0;
 String ID;
 String path="/Sensores";
-int estado; // 0 = sin dedo en el sensor 1 = Estabilizando datos  2= Datos estables
+int estado;                 //Se crearon tres estados: 0=sin dedo en el sensor 1=estabilizando datos  2=datos estables
 WiFiManager wifiManager;
 TaskHandle_t Task1;
 
@@ -43,76 +43,78 @@ FirebaseJson json;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-// NTP Variables
+//Variables NTP (Network Time Protocol)
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "south-america.pool.ntp.org");
 unsigned long epochTime; 
 
-/*********** VARIABLES MAX30102 *******/
 
-double avered = 0; double aveir = 0;
+/******VARIABLES MAX30102******/
+double avered = 0; 
+double aveir = 0;
 double sumirrms = 0;
 double sumredrms = 0;
 int i = 0;
-int Num = 100;//calculate SpO2 by this sampling interval
+int Num = 100;              //Se calcula SpO2 por intervalo de muestreo
+double ESpO2 = 95.0;        //Valor inicial estimado de SpO2
+double FSpO2 = 0.7;         //Factor de filtro para el SpO2 estimado
+double frate = 0.95;        //Filtro paso bajo para el valor del LED IR/rojo para eliminar el componente AC
 
-double ESpO2 = 95.0;//initial value of estimated SpO2
-double FSpO2 = 0.7; //filter factor for estimated SpO2
-double frate = 0.95; //low pass filter for IR/red LED value to eliminate AC component
-#define TIMETOBOOT 3000 // wait for this time(msec) to output SpO2
-#define SCALE 88.0 //adjust to display heart beat and SpO2 in the same scale
-#define SAMPLING 5 //if you want to see heart beat more precisely , set SAMPLING to 1
-#define FINGER_ON 30000 // if red signal is lower than this , it indicates your finger is not on the sensor
+#define TIMETOBOOT 3000    //Tiempo de esperra en mseg para generar un valor de SpO2
+#define SCALE 88.0         //Escala ajustable para mostrar el latido del corazón y la SpO2 en la misma escala
+#define SAMPLING 5         //Muestreo para observar las pulsaciones con mayor precisión
+#define FINGER_ON 30000    //Valor para indicar que el dedo se encuentra en el sensor, si la señal roja es más baja esto indicará que su dedo no está en el sensor
 #define MINIMUM_SPO2 80.0
 
-const byte RATE_SIZE = 4; //Increase this for more averaging. 4 is good.
-byte rates[RATE_SIZE]; //Array of heart rates
-byte rateSpot = 0;
-long lastBeat = 0; //Time at which the last beat occurred
+const byte RATE_SIZE = 4;  //Aumente si desea obtener más promedios.
+byte rates[RATE_SIZE];     //Matriz de frecuencias cardíacas.
+byte rateSpot = 0;         //
+long lastBeat = 0;         //Momento en el que ocurre el último latido
 float beatsPerMinute;
 int beatAvg;
 uint32_t ledIR;
+
 #define USEFIFO
 
 
-/******* METODOS *******/
-
+<<<<<<< HEAD
 // Get hora y fecha
 
+=======
+/******METODOS******/
+>>>>>>> 78ca11e6c2125364830cecd14cfc7f283dbe5f0b
 unsigned long get_Time() {
   timeClient.update();
   unsigned long now = timeClient.getEpochTime();
   return now;
 }
 
-void pantalla()
-{
-  // Metodo para imprimir en la pantalla LCD
-
-Heltec.display->clear();
-while(estado==1)
+void pantalla(){           //Método para imprimir en la pantalla LCD
+Heltec.display->clear();   //Se limpia la pantalla
+while(estado==1)           //Condición: si se encuentra en estado 1 aparecera el siguiente mensaje en la pantalla
 {
   Heltec.display -> drawString(6,40,"CALCULANDO...");
 }
-// AQUI VA LO DE LA PANTALLA + CORAZON
-Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));
-Heltec.display -> drawString(3,10,"ID:"+ ID);
-Heltec.display -> drawString(3,30,"TEMP: "+String(promtemp));
-Heltec.display -> drawString(3,40,"SPO2: "+String(ESpO2));
-if(modo==0)
-{
-  // LORA 
+
+Heltec.display -> clear (); //Se limpia la pantalla                                                         
+Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));    //Se muestra en la pantalla "BPM:" seguido del valor de pulsaciones por minuto medido.
+Heltec.display -> drawString(3,10,"ID:"+ ID);                  //Se muestra en la pantalla "ID:" seguido del número correspondiente.
+Heltec.display -> drawString(3,30,"TEMP: "+String(promtemp));  //Se muestra en la pantalla "TEMP:" seguido del valor de temperatura medido.
+Heltec.display -> drawString(3,40,"SPO2: "+String(ESpO2));     //Se muestra en la pantalla "SPO2:" seguido del valor de oxigenación en la sangre medido.
+Heltec.display->drawXbm(72,11, heartbeat_png_width, heartbeat_png_height, heartbeat_png_bits); //Se muestra la imagen de un corazón
+Heltec.display -> drawString(65,0, "Covid-Monitor");           //Se muestra en la pantalla el mensaje "Covid-Monitor" correspondiente al nombre del dispositivo
+Heltec.display -> drawString(60,53, "Castillo & Ortiz");       //Se muestra en la pantalla el mensaje "Castillo & Ortiz" correspondiente a los nombres de los creadores
+if(modo==0){               //Condición: Si se encuentra en modo 0, correspondiente a LoRa se mostrará en la pantalla el ícono de LoRa
+Heltec.display->drawXbm(0,0, lora_width, lora_height, lora_bits);
 }
-if(modo==1)
-{
- // WIFI 
+if(modo==1){                //Condición: Si se encuentra en modo 1, correspondiente a Wi-Fi se mostrará en la pantalla el ícono de Wi-Fi
+ Heltec.display->drawXbm(0,0,logowifi2_width, logowifi2_height, logowifi2_bits);
 }
 Heltec.display ->display(); 
 }
 
-void connectFirebase()
-{
-  config.api_key = API_KEY;
+void connectFirebase(){                                        //Método para la conexión con la base de datos
+  config.api_key = API_KEY;                                    //
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
   config.database_url = FIREBASE_HOST;
@@ -120,9 +122,9 @@ void connectFirebase()
   Firebase.begin(&config, &auth);
 }
 
-void sendFirebase() {
-  String nodo = path + "/"+ID+"/";
-  String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";
+void sendFirebase() {                                          //Método para el envío de datos o valores a la base de datos
+  String nodo = path + "/"+ID+"/";                             //
+  String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";  //  
   epochTime = get_Time();
   json.add("spo2", ESpO2);
   json.add("hr", beatAvg);
@@ -131,19 +133,14 @@ void sendFirebase() {
   Firebase.updateNode(firebaseData,nodo1,json);
   }
 
-/* ENVIAR DATOS */
-void sendData(void *parameter)
-{
-  while(1)
-  {
-  if(estado==2)
-  {
-  if(modo==0)
-  {
-    if(WiFi.status()== WL_CONNECTED)
-    {
+/******ENVIAR DATOS******/
+void sendData(void *parameter){                                //Método para el envío de datos***************
+  while(1){                                                    //Ciclo
+  if(estado==2){
+  if(modo==0){
+    if(WiFi.status()== WL_CONNECTED){
       WiFi.disconnect(true);
-    }
+  }
   Serial.println("ENVIANDO POR LORA");
   LoRa.beginPacket();
   LoRa.setTxPower(14,RF_PACONFIG_PASELECT_PABOOST);
@@ -155,17 +152,15 @@ void sendData(void *parameter)
   LoRa.print("/");
   LoRa.print(ID);
   LoRa.endPacket();
-  
   }
-  if(modo==1)
-  {
-   if(WiFi.status()!= WL_CONNECTED)
-   {
+  if(modo==1){
+    if(WiFi.status()!= WL_CONNECTED){
+      
     //PANTALLA CONECTANDO WIFI
     wifiManager.autoConnect("Covid-Monitor");
     connectFirebase();
-   }
-   sendFirebase();
+    }
+    sendFirebase();
   }
   delay(6000);
   vTaskDelay(10);
@@ -173,47 +168,37 @@ void sendData(void *parameter)
   }
 }
 
-
-
-
-
-
-/* INTERRUPCION */
-void isr()
-{
-  if(millis()-lastTime > DELAY_BTN)
-  {
+/******INTERRUPCION******/
+void isr(){
+  if(millis()-lastTime > DELAY_BTN){
     Serial.println("¡Interrupción!"); // PARA VERIFICAR QUE SE ENTRÓ EN LA INTERRUPCIÓN
     switch(modo){
       case 0: 
         modo = 1;
-        // LOGO DE WIFI
+        Heltec.display->drawXbm(0,0,logowifi2_width, logowifi2_height, logowifi2_bits);
         Serial.println("MODO WIFI");
       break;
       case 1: 
-        // LOGO DE LORA
+        Heltec.display->drawXbm(0,0, lora_width, lora_height, lora_bits);
         modo=0;
       break;
       default: Serial.println("ERROR EN LA INTERRUPCION");
       break;
       lastTime=millis();
-              }
+      }
   }
 }
-/* INICIALIZANDO ADC */
-void setupADC()
-{
-  adcAttachPin(13); // Se usara el pin 13 para ADC
-  analogReadResolution(12); // 12 bits de Resolucion
-  analogSetClockDiv(255); // 1338mS
+/*****INICIALIZANDO ADC*****/
+void setupADC(){                                               //Método para inicializar el ADC
+  adcAttachPin(13);                                            //Para ello se usará el pin 13         
+  analogReadResolution(12);                                    //Se establecieron 12 bits de resolución
+  analogSetClockDiv(255);                                      //Se configuró el clock en 1338mS
 }
 
 /* INICIALIZANDO MAX30102 */
-void setupMAX30102()
-{
+void setupMAX30102(){
   Wire1.begin(21, 22);
-while (!particleSensor.begin(Wire1, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
-  {
+while (!particleSensor.begin(Wire1, I2C_SPEED_FAST)){ //Use default I2C port, 400kHz speed
     Serial.println("MAX30102 was not found. Please check wiring/power/solder jumper at MH-ET LIVE MAX30102 board. ");
     //while (1);
   }
@@ -222,36 +207,34 @@ while (!particleSensor.begin(Wire1, I2C_SPEED_FAST)) //Use default I2C port, 400
   byte ledBrightness = 0x7F; //Options: 0=Off to 255=50mA
   byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
   byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+  
   //Options: 1 = IR only, 2 = Red + IR on MH-ET LIVE MAX30102 board
   int sampleRate = 200; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
   int pulseWidth = 411; //Options: 69, 118, 215, 411
   int adcRange = 16384; //Options: 2048, 4096, 8192, 16384
+  
   // Set up the wanted parameters
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
-
   particleSensor.enableDIETEMPRDY();
 }
-/* INICIALIZANDO INTERRUPCIONES*/
-void setupISR()
-{
+
+/******INICIALIZANDO INTERRUPCIONES******/
+void setupISR(){
   pinMode(btn, INPUT_PULLDOWN); // El PIN X se define como salida y con resistencia de PULL_DOWN
   attachInterrupt(btn, isr, RISING); // INTERRUPCION CUANDO HAYA FLANCO DE SUBIDA
 }
 
-/* CALCULANDO VALORES DE TEMPERATURA */
-void leerADC()
-{
+/******CALCULANDO VALORES DE TEMPERATURA******/
+void leerADC(){
     promtemp=0;
-    for(int i=0;i<100;i++)
-      {
+    for(int i=0;i<100;i++){
       tempC = (3.3 * analogRead(13) * 100.0)/4095.0; // SE LEE EL VALOR ANALOGICO Y SE CALCULA LA TEMPERATURA
       promtemp=tempC+promtemp;  // SE SUMA PARA CALCULAR UN PROMEDIO DE 100 VALORES
       }  
-      promtemp=promtemp/100; // SE CALCULA EL PROMEDIO DE LA TEMP
-     
+      promtemp=promtemp/100; // SE CALCULA EL PROMEDIO DE LA TEMP     
 }
-void leerMax30102()
-{
+
+void leerMax30102(){
   Serial.println("estoy aqui");
     uint32_t ir, red , green;
   double fred, fir;
@@ -268,8 +251,6 @@ void leerMax30102()
     red = particleSensor.getFIFOIR(); //why getFOFOIR output Red data by MAX30102 on MH-ET LIVE breakout board
     ir = particleSensor.getFIFORed(); //why getFIFORed output IR data by MAX30102 on MH-ET LIVE breakout board
 #endif
-
-    
     
     i++;
     fred = (double)red;
@@ -337,8 +318,7 @@ void leerMax30102()
 #endif
 }
 
-void setup() {
-  // put your setup code here, to run once:
+void setup() {                                                 //Método para la configuración    
   Serial.begin(115200);
   Serial.println("Iniciando config");
   Wire1.begin(SDA,SCL);
@@ -358,39 +338,32 @@ void setup() {
   String subID2= WiFi.macAddress().substring(12,14);
   String subID3= WiFi.macAddress().substring(15,WiFi.macAddress().length());
   ID =subID1+subID2+subID3;
-  //wifiManager.autoConnect("Covid-Monitor");
   Serial.println("CONFIGURACION TERMINADA");
-  
-  
-
-
 }
 
 void loop() {
 
- while(ledIR = particleSensor.getFIFOIR() < FINGER_ON)
- {
-   
+ while(ledIR = particleSensor.getFIFOIR() < FINGER_ON){ 
   Heltec.display->clear();
   Heltec.display -> drawString(6,40,"COLOCE EL DEDO EN EL SENSOR");
   Heltec.display ->display();
-  estado=0;
-   
+  estado=0; 
  }
- if(estado==0)
- {
+ 
+ if(estado==0){
   estado=1;
   tiempo=millis();
  }
- if(estado==1 && millis()-tiempo>= ESTABLE)
- {
+ 
+ if(estado==1 && millis()-tiempo>= ESTABLE){
   estado==2;
  }
+ 
  leerMax30102();
  leerADC();
  pantalla();
- if(estado==2)
- {
+ 
+ if(estado==2){
   delay(2000);
  }
  }
