@@ -1,37 +1,53 @@
 /******* LIBRERIAS *******/
 #include "secrets.h"
 #include "images.h"
-#include <WiFiClientSecure.h>
-#include <PubSubClient.h>
-#include "WiFi.h"
 #include <WiFiManager.h> 
 #include <Wire.h>
 #include "MAX30105.h"
 #include "heltec.h"
 #include "heartRate.h"
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
 MAX30105 particleSensor;
+
+//Provide the token generation process info.
+#include "addons/TokenHelper.h"
+//Provide the RTDB payload printing info and other helper functions.
+#include "addons/RTDBHelper.h"
+
 
 /***** Definiciones *******/
 #define btn 12
-#define AWS_IOT_PUBLISH_TOPIC   "data/sensors"
-#define AWS_IOT_SUBSCRIBE_TOPIC "data/recibo"
-#define BUFFER_LEN  256
 #define BAND    915E6 //Banda del LoRa
 #define MAX_BRIGHTNESS 255
 #define DELAY_BTN 750
 #define ESTABLE 7000
 
+
 /******* VARIABLES ******/
-float promtemp,tempC,spo2,hr;
+float promtemp,tempC;
 int modo=0;
 long lastTime=0, tiempo=0;
-char msg[BUFFER_LEN];
 String ID;
-WiFiManager wifiManager;
-WiFiClientSecure net = WiFiClientSecure();
-PubSubClient client(net);
-TaskHandle_t Task1;
+String path="/Sensores";
 int estado; // 0 = sin dedo en el sensor 1 = Estabilizando datos  2= Datos estables
+WiFiManager wifiManager;
+TaskHandle_t Task1;
+
+// Firebase Data object
+FirebaseData firebaseData;
+FirebaseJson json;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+// NTP Variables
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "south-america.pool.ntp.org");
+unsigned long epochTime; 
+
 /*********** VARIABLES MAX30102 *******/
 
 double avered = 0; double aveir = 0;
@@ -57,12 +73,18 @@ float beatsPerMinute;
 int beatAvg;
 uint32_t ledIR;
 #define USEFIFO
+
+
 /******* METODOS *******/
 
-/*RECIBIR MENSAJE AWS */
+unsigned long get_Time() {
+  timeClient.update();
+  unsigned long now = timeClient.getEpochTime();
+  return now;
+}
+
 void pantalla()
 {
-
   // Metodo para imprimir en la pantalla LCD
 
 Heltec.display->clear();
@@ -83,65 +105,29 @@ if(modo==1)
 {
  // WIFI 
 }
-Heltec.display ->display();
-  
-}
-void messageHandler(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
+Heltec.display ->display(); 
 }
 
-
-void connectAWS()
+void connectFirebase()
 {
-  // Configure WiFiClientSecure to use the AWS IoT device credentials
-  net.setCACert(AWS_CERT_CA);
-  net.setCertificate(AWS_CERT_CRT);
-  net.setPrivateKey(AWS_CERT_PRIVATE);
-
-  // Connect to the MQTT broker on the AWS endpoint we defined earlier
-  client.setServer(AWS_IOT_ENDPOINT, 8883);
-
-  // Create a message handler
-  client.setCallback(messageHandler);
-
-  Serial.print("Connecting to AWS IOT");
-
-  while (!client.connect(THINGNAME)) {
-    Serial.print(".");
-    delay(100);
-  }
-
-  if(!client.connected()){
-    Serial.println("AWS IoT Timeout!");
-    return;
-  }
-
-  // Subscribe to a topic
-  client.subscribe(AWS_IOT_SUBSCRIBE_TOPIC);
-
-  Serial.println("AWS IoT Connected!");
+  config.api_key = API_KEY;
+  auth.user.email = USER_EMAIL;
+  auth.user.password = USER_PASSWORD;
+  config.database_url = FIREBASE_HOST;
+  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
+  Firebase.begin(&config, &auth);
 }
 
-
-/* ENVIAR A AWS IOT*/
-void publishMessage()
-{
-  Serial.print("ESTOY ENVIANDO POR AWS"); 
-  String strTemp=String(promtemp);
-  String strSpo2=String(spo2);
-  String strHR=String(hr);  
-  snprintf (msg, BUFFER_LEN,"{ \"ID\": \"%s\" , \"Tempratura\" : \"%s\" , \"Pulsaciones\": \"%s\" , \"Oxigen": \"%s\" }",ID.c_str(),strTemp.c_str(),strHR.c_str(),strSpo2.c_str());
-  Serial.println(msg);
-  client.publish(AWS_IOT_PUBLISH_TOPIC,msg);
-  Serial.print("Mensaje enviado");
-}
+void sendFirebase() {
+  String nodo = path + "/"+ID+"/";
+  String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";
+  epochTime = get_Time();
+  json.add("spo2", ESpO2);
+  json.add("hr", beatAvg);
+  json.add("temp", promtemp);  
+  Firebase.updateNode(firebaseData,nodo,json);
+  Firebase.updateNode(firebaseData,nodo1,json);
+  }
 
 /* ENVIAR DATOS */
 void sendData(void *parameter)
@@ -175,9 +161,9 @@ void sendData(void *parameter)
    {
     //PANTALLA CONECTANDO WIFI
     wifiManager.autoConnect("Covid-Monitor");
-    connectAWS();
+    connectFirebase();
    }
-   publishMessage();
+   sendFirebase();
   }
   delay(6000);
   vTaskDelay(10);
