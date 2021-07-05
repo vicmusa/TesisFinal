@@ -77,12 +77,10 @@ uint32_t ledIR;
 #define USEFIFO
 
 
-<<<<<<< HEAD
-// Get hora y fecha
 
-=======
+// Get hora y fecha
 /******METODOS******/
->>>>>>> 78ca11e6c2125364830cecd14cfc7f283dbe5f0b
+
 unsigned long get_Time() {
   timeClient.update();
   unsigned long now = timeClient.getEpochTime();
@@ -91,12 +89,12 @@ unsigned long get_Time() {
 
 void pantalla(){           //Método para imprimir en la pantalla LCD
 Heltec.display->clear();   //Se limpia la pantalla
-while(estado==1)           //Condición: si se encuentra en estado 1 aparecera el siguiente mensaje en la pantalla
+if(estado==1)           //Condición: si se encuentra en estado 1 aparecera el siguiente mensaje en la pantalla
 {
-  Heltec.display -> drawString(6,40,"CALCULANDO...");
+  Heltec.display -> drawString(6,40,"CALCULANDO..."); 
 }
-
-Heltec.display -> clear (); //Se limpia la pantalla                                                         
+if(estado==2)
+{                                                        
 Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));    //Se muestra en la pantalla "BPM:" seguido del valor de pulsaciones por minuto medido.
 Heltec.display -> drawString(3,10,"ID:"+ ID);                  //Se muestra en la pantalla "ID:" seguido del número correspondiente.
 Heltec.display -> drawString(3,30,"TEMP: "+String(promtemp));  //Se muestra en la pantalla "TEMP:" seguido del valor de temperatura medido.
@@ -108,11 +106,11 @@ if(modo==0){               //Condición: Si se encuentra en modo 0, correspondie
 Heltec.display->drawXbm(0,0, lora_width, lora_height, lora_bits);
 }
 if(modo==1){                //Condición: Si se encuentra en modo 1, correspondiente a Wi-Fi se mostrará en la pantalla el ícono de Wi-Fi
- Heltec.display->drawXbm(0,0,logowifi2_width, logowifi2_height, logowifi2_bits);
+Heltec.display->drawXbm(0,0,logowifi2_width, logowifi2_height, logowifi2_bits);
+}
 }
 Heltec.display ->display(); 
 }
-
 void connectFirebase(){                                        //Método para la conexión con la base de datos
   config.api_key = API_KEY;                                    //
   auth.user.email = USER_EMAIL;
