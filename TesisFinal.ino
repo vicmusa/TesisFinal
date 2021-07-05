@@ -77,6 +77,8 @@ uint32_t ledIR;
 
 /******* METODOS *******/
 
+// Get hora y fecha
+
 unsigned long get_Time() {
   timeClient.update();
   unsigned long now = timeClient.getEpochTime();
