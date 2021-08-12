@@ -24,16 +24,16 @@ MAX30105 particleSensor;
 #define BAND 915E6           //Banda del LoRa
 #define MAX_BRIGHTNESS 255   //
 #define DELAY_BTN 750        //
-#define ESTABLE 7000         //
+        
 
 
 /******* VARIABLES ******/
 float promtemp,tempC;
 int modo=0;
-long lastTime=0, tiempo=0;
+unsigned long lastTime=0, tiempo=0,resta=0,lastAct=0;
 String ID;
 String path="/Sensores";
-int estado;                 //Se crearon tres estados: 0=sin dedo en el sensor 1=estabilizando datos  2=datos estables
+int estado=0;           //Se crearon tres estados: 0=sin dedo en el sensor 1=estabilizando datos  2=datos estables
 WiFiManager wifiManager;
 TaskHandle_t Task1;
 
@@ -118,6 +118,7 @@ void connectFirebase(){                                        //Método para la
   config.database_url = FIREBASE_HOST;
   config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
   Firebase.begin(&config, &auth);
+  epochTime=get_Time();
 }
 
 void sendFirebase() {                                          //Método para el envío de datos o valores a la base de datos
@@ -132,9 +133,8 @@ void sendFirebase() {                                          //Método para el
   }
 
 /******ENVIAR DATOS******/
-void sendData(void *parameter){                                //Método para el envío de datos***************
-  while(1){                                                    //Ciclo
-  if(estado==2){
+void sendData(){                                //Método para el envío de datos***************
+                                                  //Ciclo
   if(modo==0){
     if(WiFi.status()== WL_CONNECTED){
       WiFi.disconnect(true);
@@ -160,15 +160,12 @@ void sendData(void *parameter){                                //Método para el
     }
     sendFirebase();
   }
-  delay(6000);
-  vTaskDelay(10);
   }
-  }
-}
+  
 
 /******INTERRUPCION******/
 void isr(){
-  if(millis()-lastTime > DELAY_BTN){
+  if(millis()-lastTime > 1500){
     Serial.println("¡Interrupción!"); // PARA VERIFICAR QUE SE ENTRÓ EN LA INTERRUPCIÓN
     switch(modo){
       case 0: 
@@ -182,6 +179,7 @@ void isr(){
       break;
       default: Serial.println("ERROR EN LA INTERRUPCION");
       break;
+      lastTime=0;
       lastTime=millis();
       }
   }
@@ -279,7 +277,7 @@ void leerMax30102(){
       // Serial.println(R);
       SpO2 = -23.3 * (R - 0.4) + 100; //http://ww1.microchip.com/downloads/jp/AppNotes/00001525B_JP.pdf
       ESpO2 = FSpO2 * ESpO2 + (1.0 - FSpO2) * SpO2;//low pass filter
-      //  Serial.print(SpO2);Serial.print(",");Serial.println(ESpO2);
+      Serial.print(SpO2);Serial.print(",");Serial.println(ESpO2);
       sumredrms = 0.0; sumirrms = 0.0; i = 0;
       break;
     }
@@ -324,14 +322,14 @@ void setup() {                                                 //Método para la
   setupADC();
   setupMAX30102();
   setupISR();
-  xTaskCreatePinnedToCore(
+  /*xTaskCreatePinnedToCore(
       sendData, /* Function to implement the task */
-      "Task1", /* Name of the task */
-      100000,  /* Stack size in words */
-      NULL,  /* Task input parameter */
-      0,  /* Priority of the task */
-      &Task1,  /* Task handle. */
-      0); /* Core where the task should run */
+      //"Task1", /* Name of the task */
+      //100000,  /* Stack size in words */
+      //NULL,  /* Task input parameter */
+      //0,  /* Priority of the task */
+      //&Task1,  /* Task handle. */
+      //0); /* Core where the task should run */ *?
   String subID1= WiFi.macAddress().substring(9,11);
   String subID2= WiFi.macAddress().substring(12,14);
   String subID3= WiFi.macAddress().substring(15,WiFi.macAddress().length());
@@ -341,27 +339,48 @@ void setup() {                                                 //Método para la
 
 void loop() {
 
- while(ledIR = particleSensor.getFIFOIR() < FINGER_ON){ 
+ /*while(particleSensor.getFIFOIR() < FINGER_ON){
+  String a= String(particleSensor.getFIFOIR()); 
   Heltec.display->clear();
   Heltec.display -> drawString(6,40,"COLOCE EL DEDO EN EL SENSOR");
   Heltec.display ->display();
+  Serial.println(a+" "+String(FINGER_ON));
   estado=0; 
- }
+ }*/
  
  if(estado==0){
   estado=1;
   tiempo=millis();
+  Serial.println(String(tiempo));
+  Serial.print(String(estado));
  }
- 
- if(estado==1 && millis()-tiempo>= ESTABLE){
-  estado==2;
+
+ resta=0;
+ resta=millis()-tiempo;
+ if(estado==1 && resta>12000)
+ {
+  estado=2;
+  Serial.print("ENTRE AQUI");
+  delay(2000);
+  tiempo=0;
+  tiempo=millis();
  }
  
  leerMax30102();
  leerADC();
+ if(estado==1)
+ {
  pantalla();
+ }
  
  if(estado==2){
-  delay(2000);
+  if(millis()-lastAct > 5000)
+  {
+  Serial.println("Actualizo y envio");
+  lastAct=millis();
+  pantalla();
+  sendData();
+  
+  }
  }
  }
