@@ -54,6 +54,7 @@ double avered = 0;
 double aveir = 0;
 double sumirrms = 0;
 double sumredrms = 0;
+uint32_t DataFinger = 0;
 int i = 0;
 int Num = 100;              //Se calcula SpO2 por intervalo de muestreo
 double ESpO2 = 95.0;        //Valor inicial estimado de SpO2
@@ -249,6 +250,7 @@ void leerMax30102(){
 #endif
     
     i++;
+    DataFinger = ir;
     fred = (double)red;
     fir = (double)ir;
     avered = avered * frate + (double)red * (1.0 - frate);//average red level by low pass filter
@@ -265,7 +267,11 @@ void leerMax30102(){
         if ( red_forGraph > 100.0 ) red_forGraph = 100.0;
         if ( red_forGraph < 80.0 ) red_forGraph = 80.0;
         //        Serial.print(red); Serial.print(","); Serial.print(ir);Serial.print(".");
-        if (ir < FINGER_ON) ESpO2 = MINIMUM_SPO2; //indicator for finger detached
+        if (ir < FINGER_ON)
+        {ESpO2 = MINIMUM_SPO2;
+        estado = 0;
+        
+        }//indicator for finger detached
         float temperature = particleSensor.readTemperatureF();
   
         Serial.print(" Oxygen % = ");
@@ -322,14 +328,6 @@ void setup() {                                                 //Método para la
   setupADC();
   setupMAX30102();
   setupISR();
-  /*xTaskCreatePinnedToCore(
-      sendData, /* Function to implement the task */
-      //"Task1", /* Name of the task */
-      //100000,  /* Stack size in words */
-      //NULL,  /* Task input parameter */
-      //0,  /* Priority of the task */
-      //&Task1,  /* Task handle. */
-      //0); /* Core where the task should run */ *?
   String subID1= WiFi.macAddress().substring(9,11);
   String subID2= WiFi.macAddress().substring(12,14);
   String subID3= WiFi.macAddress().substring(15,WiFi.macAddress().length());
@@ -339,14 +337,14 @@ void setup() {                                                 //Método para la
 
 void loop() {
 
- /*while(particleSensor.getFIFOIR() < FINGER_ON){
-  String a= String(particleSensor.getFIFOIR()); 
+  while(estado==0 && DataFinger < FINGER_ON){
+  leerMax30102(); 
   Heltec.display->clear();
   Heltec.display -> drawString(6,40,"COLOCE EL DEDO EN EL SENSOR");
   Heltec.display ->display();
-  Serial.println(a+" "+String(FINGER_ON));
-  estado=0; 
- }*/
+  Serial.println();
+  Serial.println(String(DataFinger)+ "DATA");
+ }
  
  if(estado==0){
   estado=1;
