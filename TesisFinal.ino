@@ -187,7 +187,7 @@ void isr(){
 }
 /*****INICIALIZANDO ADC*****/
 void setupADC(){                                               //Método para inicializar el ADC
-  adcAttachPin(13);                                            //Para ello se usará el pin 13         
+  adcAttachPin(38);                                            //Para ello se usará el pin 38       
   analogReadResolution(12);                                    //Se establecieron 12 bits de resolución
   analogSetClockDiv(255);                                      //Se configuró el clock en 1338mS
 }
@@ -224,8 +224,8 @@ void setupISR(){
 /******CALCULANDO VALORES DE TEMPERATURA******/
 void leerADC(){
     promtemp=0;
-    for(int i=0;i<100;i++){
-      tempC = (3.3 * analogRead(13) * 100.0)/4095.0; // SE LEE EL VALOR ANALOGICO Y SE CALCULA LA TEMPERATURA
+    for(int i=0;i<=100;i++){
+      tempC = (3.3 * analogRead(38) * 100.0)/4095.0; // SE LEE EL VALOR ANALOGICO Y SE CALCULA LA TEMPERATURA
       promtemp=tempC+promtemp;  // SE SUMA PARA CALCULAR UN PROMEDIO DE 100 VALORES
       }  
       promtemp=promtemp/100; // SE CALCULA EL PROMEDIO DE LA TEMP     
