@@ -20,24 +20,24 @@ MAX30105 particleSensor;
 #include "addons/RTDBHelper.h"
 
 /******Definiciones******/
-#define btn 12               //
+#define btn 12               //Pin del boton
 #define BAND 915E6           //Banda del LoRa
-#define MAX_BRIGHTNESS 255   //
-#define DELAY_BTN 750        //
+#define MAX_BRIGHTNESS 255   //Brillo del LED del MAX
+#define DELAY_BTN 750        //Delay boton
         
 
 
 /******* VARIABLES ******/
-float promtemp,tempC;
-int modo=0;
+float promtemp,tempC;    
+int modo=0;             
 unsigned long lastTime=0, tiempo=0,resta=0,lastAct=0;
 String ID;
-String path="/Sensores";
+String path="/Sensores";//Camino a la base de datos
 int estado=0;           //Se crearon tres estados: 0=sin dedo en el sensor 1=estabilizando datos  2=datos estables
 WiFiManager wifiManager;
 TaskHandle_t Task1;
 
-// Firebase Data object
+// Objetos de Data de Firebase Data object
 FirebaseData firebaseData;
 FirebaseJson json;
 FirebaseAuth auth;
@@ -65,22 +65,21 @@ double frate = 0.95;        //Filtro paso bajo para el valor del LED IR/rojo par
 #define SCALE 88.0         //Escala ajustable para mostrar el latido del corazón y la SpO2 en la misma escala
 #define SAMPLING 5         //Muestreo para observar las pulsaciones con mayor precisión
 #define FINGER_ON 30000    //Valor para indicar que el dedo se encuentra en el sensor, si la señal roja es más baja esto indicará que su dedo no está en el sensor
-#define MINIMUM_SPO2 80.0
+#define MINIMUM_SPO2 80.0  //Se define el menor valor de SpO2 cuando no se coloca el dedo
 
 const byte RATE_SIZE = 4;  //Aumente si desea obtener más promedios.
 byte rates[RATE_SIZE];     //Matriz de frecuencias cardíacas.
-byte rateSpot = 0;         //
+byte rateSpot = 0;         //Taza en bytes de los latidos
 long lastBeat = 0;         //Momento en el que ocurre el último latido
-float beatsPerMinute;
-int beatAvg;
-uint32_t ledIR;
+float beatsPerMinute;      //Bits por minuto
+int beatAvg;               //Promedio de los latidos
+uint32_t ledIR;            //Valor del led del MAX
 
-#define USEFIFO
+#define USEFIFO           //Definir la utilizacion de FIFO (First In First Out)
 
+/******METODO GET HORA Y FECHA******/
 
-
-// Get hora y fecha
-/******METODOS******/
+//Se calcula la fecha y hora en Epoch Time para ser enviado a la Base de Datos
 
 unsigned long get_Time() {
   timeClient.update();
@@ -92,9 +91,9 @@ void pantalla(){           //Método para imprimir en la pantalla LCD
 Heltec.display->clear();   //Se limpia la pantalla
 if(estado==1)           //Condición: si se encuentra en estado 1 aparecera el siguiente mensaje en la pantalla
 {
-  Heltec.display -> drawString(6,40,"CALCULANDO..."); 
+  Heltec.display -> drawString(6,40,"CALCULANDO..."); //Se muetra en la pantalla el mensaje "CALCULANDO..." hasta que cambie el estado
 }
-if(estado==2)
+if(estado==2)          //Condición: si se encuentra en estado 2 apareceran los siguientes mensaje en la pantalla
 {                                                        
 Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));    //Se muestra en la pantalla "BPM:" seguido del valor de pulsaciones por minuto medido.
 Heltec.display -> drawString(3,10,"ID:"+ ID);                  //Se muestra en la pantalla "ID:" seguido del número correspondiente.
@@ -113,18 +112,18 @@ Heltec.display->drawXbm(0,0,logowifi2_width, logowifi2_height, logowifi2_bits);
 Heltec.display ->display(); 
 }
 void connectFirebase(){                                        //Método para la conexión con la base de datos
-  config.api_key = API_KEY;                                    //
+  config.api_key = API_KEY;                                    
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
   config.database_url = FIREBASE_HOST;
-  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
+  config.token_status_callback = tokenStatusCallback;
   Firebase.begin(&config, &auth);
   epochTime=get_Time();
 }
 
 void sendFirebase() {                                          //Método para el envío de datos o valores a la base de datos
-  String nodo = path + "/"+ID+"/";                             //
-  String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";  //  
+  String nodo = path + "/"+ID+"/";                             //Se guarda la informacion en el nodo  
+  String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";  //Se guarda la informacion en el nodo 1 
   epochTime = get_Time();
   json.add("spo2", ESpO2);
   json.add("hr", beatAvg);
@@ -134,9 +133,9 @@ void sendFirebase() {                                          //Método para el
   }
 
 /******ENVIAR DATOS******/
-void sendData(){                                //Método para el envío de datos***************
-                                                  //Ciclo
-  if(modo==0){
+void sendData(){                                //Método para el envío de datos
+                                                  
+  if(modo==0){                                  //Ciclo
     if(WiFi.status()== WL_CONNECTED){
       WiFi.disconnect(true);
   }
