@@ -186,10 +186,10 @@ void isr(){
   }
 }
 /*****INICIALIZANDO ADC*****/
-void setupADC(){                                               //Método para inicializar el ADC
-  adcAttachPin(38);                                            //Para ello se usará el pin 38       
-  analogReadResolution(12);                                    //Se establecieron 12 bits de resolución
-  analogSetClockDiv(255);                                      //Se configuró el clock en 1338mS
+void setupADC(){                                               //Método para inicializar el ADC    
+  analogReadResolution(12);      //Se establecieron 12 bits de resolución
+                                  
+  //analogSetAttenuation
 }
 
 /* INICIALIZANDO MAX30102 */
@@ -224,8 +224,10 @@ void setupISR(){
 /******CALCULANDO VALORES DE TEMPERATURA******/
 void leerADC(){
     promtemp=0;
-    for(int i=0;i<=100;i++){
-      tempC = (3.3 * analogRead(38) * 100.0)/4095.0; // SE LEE EL VALOR ANALOGICO Y SE CALCULA LA TEMPERATURA
+    for(int i=0;i<100;i++){
+
+      
+      tempC = (5  * analogRead(39) * 100.0)/4095.0; // SE LEE EL VALOR ANALOGICO Y SE CALCULA LA TEMPERATURA    
       promtemp=tempC+promtemp;  // SE SUMA PARA CALCULAR UN PROMEDIO DE 100 VALORES
       }  
       promtemp=promtemp/100; // SE CALCULA EL PROMEDIO DE LA TEMP     
@@ -269,6 +271,7 @@ void leerMax30102(){
         //        Serial.print(red); Serial.print(","); Serial.print(ir);Serial.print(".");
         if (ir < FINGER_ON)
         {ESpO2 = MINIMUM_SPO2;
+         beatAvg = 0;
         estado = 0;
         
         }//indicator for finger detached
@@ -290,8 +293,7 @@ void leerMax30102(){
     particleSensor.nextSample(); //We're finished with this sample so move to next sample
     //Serial.println(SpO2);
   }
-  long irValue = particleSensor.getIR();
-
+  long irValue = particleSensor.getFIFORed();
   if (checkForBeat(irValue) == true)
   {
     //We sensed a beat!
@@ -312,15 +314,17 @@ void leerMax30102(){
       beatAvg /= RATE_SIZE;
     }
   }
+ 
    Serial.print(", BPM=");
   Serial.print(beatsPerMinute);
   Serial.print(", Avg BPM=");
   Serial.print(beatAvg);
+  
 
 #endif
 }
 
-void setup() {                                                 //Método para la configuración    
+void setup() {  //Método para la configuración
   Serial.begin(115200);
   Serial.println("Iniciando config");
   Wire1.begin(SDA,SCL);
@@ -340,7 +344,8 @@ void loop() {
   while(estado==0 && DataFinger < FINGER_ON){
   leerMax30102(); 
   Heltec.display->clear();
-  Heltec.display -> drawString(6,40,"COLOCE EL DEDO EN EL SENSOR");
+  Heltec.display -> drawString(0,16,"   COLOQUE EL DEDO   ");
+  Heltec.display -> drawString(0,32,"    EN EL SENSOR     ");
   Heltec.display ->display();
   Serial.println();
   Serial.println(String(DataFinger)+ "DATA");
@@ -355,7 +360,7 @@ void loop() {
 
  resta=0;
  resta=millis()-tiempo;
- if(estado==1 && resta>12000)
+ if(estado==1 && resta>20000)
  {
   estado=2;
   Serial.print("ENTRE AQUI");
