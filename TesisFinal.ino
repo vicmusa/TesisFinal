@@ -10,6 +10,7 @@
 #include <FirebaseESP32.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include "soc/rtc_wdt.h"
 
 MAX30105 particleSensor;
 
@@ -20,7 +21,8 @@ MAX30105 particleSensor;
 #include "addons/RTDBHelper.h"
 
 /******Definiciones******/
-#define btn 12               //Pin del boton
+#define btn 12               //Pin del boton de cambio de estado
+#define btn1 35
 #define BAND 915E6           //Banda del LoRa
 #define MAX_BRIGHTNESS 255   //Brillo del LED del MAX
 #define DELAY_BTN 750        //Delay boton
@@ -28,8 +30,10 @@ MAX30105 particleSensor;
 
 
 /******* VARIABLES ******/
-float promtemp,tempC;    
-int modo=0;             
+float promtemp,tempC;   
+bool flagpause = false; 
+unsigned long pauseAct;
+int modo=0,r=0;             
 unsigned long lastTime=0, tiempo=0,resta=0,lastAct=0;
 String ID;
 String path="/Sensores";//Camino a la base de datos
@@ -55,6 +59,7 @@ double aveir = 0;
 double sumirrms = 0;
 double sumredrms = 0;
 uint32_t DataFinger = 0;
+unsigned long notify = 0;
 int i = 0;
 int Num = 100;              //Se calcula SpO2 por intervalo de muestreo
 double ESpO2 = 95.0;        //Valor inicial estimado de SpO2
@@ -121,19 +126,29 @@ void connectFirebase(){                                        //Método para la
   epochTime=get_Time();
 }
 
-void sendFirebase() {                                          //Método para el envío de datos o valores a la base de datos
+void sendFirebase(int flag) {                                          //Método para el envío de datos o valores a la base de datos
+  json.clear();
+  epochTime = get_Time();
   String nodo = path + "/"+ID+"/";                             //Se guarda la informacion en el nodo  
   String nodo1 = "/Historicos/"+ID+"/"+String(epochTime)+"/";  //Se guarda la informacion en el nodo 1 
-  epochTime = get_Time();
+  if(flag !=0)
+  {
+    json.add("flag",flag);
+    Firebase.updateNode(firebaseData,nodo,json);
+  }
+  else
+  {
   json.add("spo2", ESpO2);
   json.add("hr", beatAvg);
   json.add("temp", promtemp);  
-  Firebase.updateNode(firebaseData,nodo,json);
   Firebase.updateNode(firebaseData,nodo1,json);
+  json.add("flag",flag);
+  Firebase.updateNode(firebaseData,nodo,json);
+  }
   }
 
 /******ENVIAR DATOS******/
-void sendData(){                                //Método para el envío de datos
+void sendData(int flag){                                //Método para el envío de datos
                                                   
   if(modo==0){                                  //Ciclo
     if(WiFi.status()== WL_CONNECTED){
@@ -142,6 +157,15 @@ void sendData(){                                //Método para el envío de dato
   Serial.println("ENVIANDO POR LORA");
   LoRa.beginPacket();
   LoRa.setTxPower(14,RF_PACONFIG_PASELECT_PABOOST);
+  if(flag!=0)
+  {
+    LoRa.print("!");
+    LoRa.print(String(flag));
+    LoRa.print("$");
+    LoRa.print(ID);
+    LoRa.endPacket();
+  }
+  else{
   LoRa.print(promtemp);
   LoRa.print("#");
   LoRa.print(beatAvg);
@@ -149,7 +173,10 @@ void sendData(){                                //Método para el envío de dato
   LoRa.print(ESpO2);
   LoRa.print("/");
   LoRa.print(ID);
+  LoRa.print("!");
+  LoRa.print(String(flag));
   LoRa.endPacket();
+  }
   }
   if(modo==1){
     if(WiFi.status()!= WL_CONNECTED){
@@ -158,9 +185,26 @@ void sendData(){                                //Método para el envío de dato
     wifiManager.autoConnect("Covid-Monitor");
     connectFirebase();
     }
-    sendFirebase();
+    sendFirebase(flag);
   }
   }
+
+
+
+ /*************** MODO PAUSA **********************/
+ void pausemode(){
+   pauseAct = millis();
+   if(flagpause)
+   {
+    flagpause = !flagpause;
+   }
+   else
+   {
+    flagpause = !flagpause;
+   }
+
+
+ }
   
 
 /******INTERRUPCION******/
@@ -216,8 +260,12 @@ while (!particleSensor.begin(Wire1, I2C_SPEED_FAST)){ //Use default I2C port, 40
 
 /******INICIALIZANDO INTERRUPCIONES******/
 void setupISR(){
+  rtc_wdt_protect_off();
+  rtc_wdt_disable();
   pinMode(btn, INPUT_PULLDOWN); // El PIN X se define como salida y con resistencia de PULL_DOWN
+  pinMode(btn1, INPUT_PULLDOWN);
   attachInterrupt(btn, isr, RISING); // INTERRUPCION CUANDO HAYA FLANCO DE SUBIDA
+  attachInterrupt(btn1, pausemode, RISING);
 }
 
 /******CALCULANDO VALORES DE TEMPERATURA******/
@@ -270,7 +318,7 @@ void leerMax30102(){
         //        Serial.print(red); Serial.print(","); Serial.print(ir);Serial.print(".");
         if (ir < FINGER_ON)
         {ESpO2 = MINIMUM_SPO2;
-         beatAvg = 0;
+     
         estado = 0;
         
         }//indicator for finger detached
@@ -292,7 +340,7 @@ void leerMax30102(){
     particleSensor.nextSample(); //We're finished with this sample so move to next sample
     //Serial.println(SpO2);
   }
-  long irValue = particleSensor.getFIFORed();
+  long irValue = particleSensor.getFIFOIR();
   if (checkForBeat(irValue) == true)
   {
     //We sensed a beat!
@@ -339,19 +387,43 @@ void setup() {  //Método para la configuración
 }
 
 void loop() {
-
-  while(estado==0 && DataFinger < FINGER_ON){
+  while(flagpause && millis() - pauseAct < 600000)
+  {
+    delay(500);
+    Serial.println(millis() - pauseAct);
+    estado = 0;
+  Heltec.display->clear();
+  Heltec.display -> drawString(0,30,"       EN PAUSA      ");
+  Heltec.display ->display();
+  }
+  flagpause = false;
+  while(estado==0 && DataFinger < FINGER_ON && !flagpause){
   leerMax30102(); 
   Heltec.display->clear();
   Heltec.display -> drawString(0,16,"   COLOQUE EL DEDO   ");
   Heltec.display -> drawString(0,32,"    EN EL SENSOR     ");
   Heltec.display ->display();
   Serial.println();
+  
+  if(notify == 0)
+  {
+     r = 1;
+     notify =millis();
+     sendData(r);
+  }
+ 
+  if(millis()-notify > 300000)
+  {
+     r++;
+    sendData(r);
+    notify = millis();
+  }
   Serial.println(String(DataFinger)+ "DATA");
  }
  
- if(estado==0){
+ if(estado==0 && !flagpause){
   estado=1;
+  notify = 0;
   tiempo=millis();
   Serial.println(String(tiempo));
   Serial.print(String(estado));
@@ -359,7 +431,7 @@ void loop() {
 
  resta=0;
  resta=millis()-tiempo;
- if(estado==1 && resta>20000)
+ if(estado==1 && resta>20000 && flagpause)
  {
   estado=2;
   Serial.print("ENTRE AQUI");
@@ -378,10 +450,11 @@ void loop() {
  if(estado==2){
   if(millis()-lastAct > 5000)
   {
+  r=0;
   Serial.println("Actualizo y envio");
   lastAct=millis();
   pantalla();
-  sendData();
+  sendData(0);
   
   }
  }
