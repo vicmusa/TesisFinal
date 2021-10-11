@@ -431,7 +431,7 @@ void loop() {
 
  resta=0;
  resta=millis()-tiempo;
- if(estado==1 && resta>20000 && flagpause)
+ if(estado==1 && resta>20000 && !flagpause)
  {
   estado=2;
   Serial.print("ENTRE AQUI");
