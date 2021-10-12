@@ -100,10 +100,10 @@ if(estado==1)           //Condición: si se encuentra en estado 1 aparecera el s
 }
 if(estado==2)          //Condición: si se encuentra en estado 2 apareceran los siguientes mensaje en la pantalla
 {                                                        
-Heltec.display -> drawString(3,20,"BPM: "+String(beatAvg));    //Se muestra en la pantalla "BPM:" seguido del valor de pulsaciones por minuto medido.
-Heltec.display -> drawString(3,10,"ID:"+ ID);                  //Se muestra en la pantalla "ID:" seguido del número correspondiente.
-Heltec.display -> drawString(3,30,"TEMP: "+String(promtemp));  //Se muestra en la pantalla "TEMP:" seguido del valor de temperatura medido.
-Heltec.display -> drawString(3,40,"SPO2: "+String(ESpO2));     //Se muestra en la pantalla "SPO2:" seguido del valor de oxigenación en la sangre medido.
+Heltec.display -> drawString(3,22,"BPM: "+String(beatAvg));    //Se muestra en la pantalla "BPM:" seguido del valor de pulsaciones por minuto medido.
+Heltec.display -> drawString(3,12,"ID:"+ ID);                  //Se muestra en la pantalla "ID:" seguido del número correspondiente.
+Heltec.display -> drawString(3,32,"TEMP: "+String(promtemp));  //Se muestra en la pantalla "TEMP:" seguido del valor de temperatura medido.
+Heltec.display -> drawString(3,42,"SPO2: "+String(ESpO2));     //Se muestra en la pantalla "SPO2:" seguido del valor de oxigenación en la sangre medido.
 Heltec.display->drawXbm(72,11, heartbeat_png_width, heartbeat_png_height, heartbeat_png_bits); //Se muestra la imagen de un corazón
 Heltec.display -> drawString(65,0, "Covid-Monitor");           //Se muestra en la pantalla el mensaje "Covid-Monitor" correspondiente al nombre del dispositivo
 Heltec.display -> drawString(60,53, "Castillo & Ortiz");       //Se muestra en la pantalla el mensaje "Castillo & Ortiz" correspondiente a los nombres de los creadores
